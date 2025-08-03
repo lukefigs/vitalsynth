@@ -30,7 +30,16 @@ decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
 weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
 
 model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
-model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
+filtered_dict = {}
+for k, v in weights.items():
+    if (
+        isinstance(v, np.ndarray)
+        and np.issubdtype(v.dtype, np.number)
+        and v.dtype.kind != "S"
+    ):
+        filtered_dict[k] = torch.from_numpy(v)
+
+model.load_state_dict(filtered_dict, strict=False)
 model.eval()
 
 @app.post("/generate_highres")
