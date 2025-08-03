@@ -2,7 +2,7 @@
 # decrypt_loader.py – Secure AES-256 model decryptor
 
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
+from Crypto.Util.Padding import unpad
 import os
 import security_config
 
