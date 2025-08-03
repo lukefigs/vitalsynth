@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from security_config import verify_api_key, admin_router
 from lstm_model import TwoLayerLSTM
 from decrypt_loader import decrypt_model_npz
-import numpy as np
 import torch
 import io
 import os
@@ -27,10 +26,26 @@ app.include_router(admin_router)
 
 # Decrypt model from AES file
 decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
-weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
+weights = torch.load(io.BytesIO(decrypted_bytes), map_location="cpu")
+if any(k.startswith("_module.") for k in weights.keys()):
+    weights = {k.replace("_module.", "", 1): v for k, v in weights.items()}
+
+# Handle nested LSTM key naming
+remapped = {}
+for k, v in weights.items():
+    if k.startswith("lstm.l"):
+        parts = k.split(".")
+        layer = parts[1][-1]
+        gate = parts[2]
+        param = parts[3]
+        new_key = f"lstm.{param}_{gate}_l{layer}" if gate in {"ih", "hh"} else k
+        remapped[new_key] = v
+    else:
+        remapped[k] = v
+weights = remapped
 
 model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
-model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
+model.load_state_dict(weights)
 model.eval()
 
 @app.post("/generate_highres")
