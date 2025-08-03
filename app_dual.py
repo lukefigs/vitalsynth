@@ -27,8 +27,6 @@ app.include_router(admin_router)
 
 logger = logging.getLogger(__name__)
 
-)
-
 @app.on_event("startup")
 async def load_model() -> None:
     """Decrypt and load the model on startup."""
@@ -47,8 +45,6 @@ async def load_model() -> None:
         model.eval()
     except Exception as exc:
         logger.error("Failed to decrypt or load model", exc_info=exc)
-
-main
 
 @app.post("/generate_highres")
 async def generate_highres(request: Request, auth=Depends(verify_api_key)):

@@ -6,9 +6,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from passlib.hash import argon2
-from dotenv import load_dotenv
-import os
 from dotenv import load_dotenv, find_dotenv
+import os
 
 # Load environment variables from a .env file if present
 load_dotenv(find_dotenv())
@@ -16,7 +15,6 @@ load_dotenv(find_dotenv())
 # -----------------------------
 # Config
 # -----------------------------
-load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if SECRET_KEY is None:
