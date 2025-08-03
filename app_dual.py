@@ -9,7 +9,7 @@ from decrypt_loader import decrypt_model_npz
 import numpy as np
 import torch
 import io
-import os
+import logging
 
 app = FastAPI()
 
@@ -25,22 +25,30 @@ app.add_middleware(
 # Mount admin token route
 app.include_router(admin_router)
 
-# Decrypt model from AES file
-decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
-weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
+logger = logging.getLogger(__name__)
 
-model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
-filtered_dict = {}
-for k, v in weights.items():
-    if (
-        isinstance(v, np.ndarray)
-        and np.issubdtype(v.dtype, np.number)
-        and v.dtype.kind != "S"
-    ):
-        filtered_dict[k] = torch.from_numpy(v)
+)
 
-model.load_state_dict(filtered_dict, strict=False)
-model.eval()
+@app.on_event("startup")
+async def load_model() -> None:
+    """Decrypt and load the model on startup."""
+    global model
+    model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
+    try:
+        decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
+        weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
+
+        filtered_dict = {}
+        for k, v in weights.items():
+            if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number) and v.dtype.kind != "S":
+                filtered_dict[k] = torch.from_numpy(v)
+
+        model.load_state_dict(filtered_dict, strict=False)
+        model.eval()
+    except Exception as exc:
+        logger.error("Failed to decrypt or load model", exc_info=exc)
+
+main
 
 @app.post("/generate_highres")
 async def generate_highres(request: Request, auth=Depends(verify_api_key)):
