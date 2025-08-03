@@ -1,0 +1,54 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VitalSynth – Synthetic Dataset Builder</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <main class="max-w-3xl mx-auto p-8">
+    <h1 class="text-3xl font-bold mb-6">Synthetic Dataset Builder</h1>
+    <form id="builderForm" class="space-y-4">
+      <div>
+        <label class="block font-semibold">Number of Samples</label>
+        <input type="number" name="num_samples" value="100" min="1" max="10000" class="w-full p-2 border rounded" required />
+      </div>
+      <div>
+        <label class="block font-semibold">Inject Edge Cases?</label>
+        <select name="edge_cases" class="w-full p-2 border rounded">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+      <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Generate</button>
+    </form>
+
+    <div id="responseBox" class="mt-6 text-green-600 hidden">
+      ✅ Dataset request submitted successfully.
+    </div>
+  </main>
+
+  <script>
+    document.getElementById("builderForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const payload = {
+        num_samples: parseInt(form.num_samples.value),
+        edge_cases: form.edge_cases.value === "true"
+      };
+
+      const res = await fetch("http://localhost:8000/generate_highres", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        document.getElementById("responseBox").classList.remove("hidden");
+      }
+    });
+  </script>
+</body>
+</html>
