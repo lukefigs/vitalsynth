@@ -27,25 +27,28 @@ app.include_router(admin_router)
 
 logger = logging.getLogger(__name__)
 
-model = None
-
+)
 
 @app.on_event("startup")
 async def load_model() -> None:
-    """Decrypt and load the model on startup.
-
-    Errors are logged so that the API process can stay alive for debugging
-    even if decryption fails.
-    """
+    """Decrypt and load the model on startup."""
     global model
     model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
     try:
         decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
         weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
-        model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
-    except Exception as exc:  # noqa: BLE001 - want to log any failure
+
+        filtered_dict = {}
+        for k, v in weights.items():
+            if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number) and v.dtype.kind != "S":
+                filtered_dict[k] = torch.from_numpy(v)
+
+        model.load_state_dict(filtered_dict, strict=False)
+        model.eval()
+    except Exception as exc:
         logger.error("Failed to decrypt or load model", exc_info=exc)
-    model.eval()
+
+main
 
 @app.post("/generate_highres")
 async def generate_highres(request: Request, auth=Depends(verify_api_key)):

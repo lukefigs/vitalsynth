@@ -3,13 +3,11 @@
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from dotenv import load_dotenv
 import os
+import security_config
 
-load_dotenv()  # 👈 This line loads your .env
-
-MODEL_KEY = os.getenv("MODEL_AES_KEY")
-if MODEL_KEY is None:
+MODEL_KEY = security_config.SECRET_KEY
+if not MODEL_KEY or MODEL_KEY == "fallback-secret-key":
     raise ValueError("MODEL_AES_KEY is not set. Check your .env file.")
 MODEL_KEY = MODEL_KEY.encode()
 

@@ -2,3 +2,9 @@ fastapi
 uvicorn
 torch
 numpy
+python-dotenv
+python-jose
+passlib[argon2]
+pycryptodome
+flask
+requests
