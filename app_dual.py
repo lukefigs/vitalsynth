@@ -9,7 +9,7 @@ from decrypt_loader import decrypt_model_npz
 import numpy as np
 import torch
 import io
-import os
+import logging
 
 app = FastAPI()
 
@@ -25,13 +25,27 @@ app.add_middleware(
 # Mount admin token route
 app.include_router(admin_router)
 
-# Decrypt model from AES file
-decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
-weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
+logger = logging.getLogger(__name__)
 
-model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
-model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
-model.eval()
+model = None
+
+
+@app.on_event("startup")
+async def load_model() -> None:
+    """Decrypt and load the model on startup.
+
+    Errors are logged so that the API process can stay alive for debugging
+    even if decryption fails.
+    """
+    global model
+    model = TwoLayerLSTM(input_size=2, hidden_size=64, num_layers=2, output_size=2)
+    try:
+        decrypted_bytes = decrypt_model_npz("dp_model_real.npz.enc")
+        weights = np.load(io.BytesIO(decrypted_bytes), allow_pickle=True)
+        model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
+    except Exception as exc:  # noqa: BLE001 - want to log any failure
+        logger.error("Failed to decrypt or load model", exc_info=exc)
+    model.eval()
 
 @app.post("/generate_highres")
 async def generate_highres(request: Request, auth=Depends(verify_api_key)):
